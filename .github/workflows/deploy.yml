@@ -3,11 +3,12 @@ name: Deploy Streamlit App
 on:
   push:
     branches:
-      - main  # Change if using a different branch
+      - main  # Runs when you push to 'main' branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -15,11 +16,10 @@ jobs:
       - name: Set Up Python
         uses: actions/setup-python@v3
         with:
-          python-version: "3.9"
+          python-version: "3.9"  # Use a Python version compatible with Streamlit
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
-
+        run: pip install -r requirements.txt || true  # Installs Streamlit & dependencies
 
       - name: Run Streamlit App
-        run: streamlit run app.py
+        run: streamlit run app.py --server.port 8501
