@@ -5,37 +5,38 @@ from google.oauth2 import service_account
 # ✅ Step 1: Paste Google Credentials Directly Here
 GOOGLE_CREDENTIALS_JSON = """
 {
+    GOOGLE_CREDENTIALS_JSON = {
     "type": "service_account",
     "project_id": "solid-scheme-450717-q8",
     "private_key_id": "f5d059394adf9d6f192c6068adf60d6564748882",
     "private_key": """-----BEGIN PRIVATE KEY-----
-    MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDC50uyrwLu+8wQ
-    pnjb/ZZzL2/YtdRySyJxA0RKl1orC4CxMLaqQG6//tz1GrO+vOrqvXZfuf/AWbP/
-    hRL3qAZy1uiMZTXsAtlwET4ZawvZL2Qv0TA5Gt3tW5ItSmgqHz3V8edsknRHAR5w
-    NPSVLbDrQ0nF729VuunKg0bQtlUV5q0jwGeU9hKGFAyxKCnxtDFvtsRXF+YxC0fN
-    W88s50aB695u0Cz1kX+jo8BtBv31dp+tAFQP+5CxT1g8M593vMTnCjrUeMFixlbL
-    /vcI8mBjvjDdL2U0b52IhJ6qVpkSURbhij8mzSyO8EHExlca9+80pdIEF2VqKBV/
-    nYX7lT63AgMBAAECggEABI4V/yu061gzS6UuEX2PODjuhSwf2t318nV93ypn8Wzh
-    LkwWgxQ+RvFtrvvp2H9oOKrwKu79rjxcveuHMCr2n55Q43Hzhk4rBy+u1TaHdQCZ
-    nFDDnIoL2QZ5DnUzyd6DMPMNJKA6LZnITtRPJQY+jwtMwQMhvHuK4xT1Dszy8otm
-    /IbXK4PuTv4Q3DaxBAky733V+6zKfOhmmroSkwRAWo1SoAcsHL1/wvuSmoFoV/QR
-    lUNWyWe/GEu2cXqj+rz/0hhgVYlVJN8x3xBocVQe/EFMDh9i8MstYzOlkv1f+hIl
-    wtcZQ3sntEkxnB2XoZdPFBXVAU56s4HNjna5Q3VHaQKBgQD+azMaWFtv1EXWCSXl
-    k8jiDpfCmBN9U6WzklINE0ZR1w5CoW+8rLwS4tQwo49vhUWqHgHaBcy6bkKu2a23
-    Bj3sqzuftnp+sMx18qcW85N2IgWn2cVqy9X+tmPf3htCpgdUIfCSyjAWbKjL1UyZ
-    GJLQCTGl4gcC/6SsDvJDDvBoLwKBgQDEHWcQsjfuuHnwgYWjHx82SdG+h6XXJP/Z
-    EkAEReDopGzUoZV4beiM2OUSleDbQDBSA/tUGxIQmVOGdMl/3ojW4XVaROi9px1w
-    S8zKB3OcpwhXQS6oD8fmacEzvNn1tI5Ez1W/v6uJe5vrhug6kfqc4Jb1WO/BPzME
-    uqE0+Ttn+QKBgQC0ZEYDtAqBLD2oGSxpr3OL9VTdgP6wqhKfVGwhIT2G4bkWvWiA
-    mulvaq2RHyegpxpSGJyvfdU/itZ1K5rkXuShXngUMkqAcdNG/hpDR8mSxWTFMr+r
-    jYPZ6nC+Vrl1dEtV+AqfygR2oey9OivpkWbnYt11BOJ72c9kv+Q+b+U9uQKBgAJq
-    NkWvXB71aJL8lU+v52t8tzd4ZiNjEj9zCRTEY4OZ2rk3kCaee9mYJiH3dIBepvmr
-    kOG1P6CysqOaNoz7iYXT2uUUqiUDtMoYNNpcAyFvsRuZ8uAg6Z49uSJQ9gIfigzw
-    3KZyzsLvobjhvWRTPdnGrjUxNiqUA6XQQoHre77JAoGBAI+aV/RAS4+7Q2/pjq8A
-    2t7eJmleYQhJRain1BxwtTk6sPB5PuET9FJvCOUGSLFZBvdXL/iL/+P1vQMJbkR7
-    +94JOVQhBPKMK+OfL6NfTVrAqtIFKy22A7aMJ1WUfiVTghRyZMJ4vFACbtKeBPWL
-    AGphVaYNcCN+PZMbVfJyWyvN
-    -----END PRIVATE KEY-----""",
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDC50uyrwLu+8wQ
+pnjb/ZZzL2/YtdRySyJxA0RKl1orC4CxMLaqQG6//tz1GrO+vOrqvXZfuf/AWbP/
+hRL3qAZy1uiMZTXsAtlwET4ZawvZL2Qv0TA5Gt3tW5ItSmgqHz3V8edsknRHAR5w
+NPSVLbDrQ0nF729VuunKg0bQtlUV5q0jwGeU9hKGFAyxKCnxtDFvtsRXF+YxC0fN
+W88s50aB695u0Cz1kX+jo8BtBv31dp+tAFQP+5CxT1g8M593vMTnCjrUeMFixlbL
+/vcI8mBjvjDdL2U0b52IhJ6qVpkSURbhij8mzSyO8EHExlca9+80pdIEF2VqKBV/
+nYX7lT63AgMBAAECggEABI4V/yu061gzS6UuEX2PODjuhSwf2t318nV93ypn8Wzh
+LkwWgxQ+RvFtrvvp2H9oOKrwKu79rjxcveuHMCr2n55Q43Hzhk4rBy+u1TaHdQCZ
+nFDDnIoL2QZ5DnUzyd6DMPMNJKA6LZnITtRPJQY+jwtMwQMhvHuK4xT1Dszy8otm
+/IbXK4PuTv4Q3DaxBAky733V+6zKfOhmmroSkwRAWo1SoAcsHL1/wvuSmoFoV/QR
+lUNWyWe/GEu2cXqj+rz/0hhgVYlVJN8x3xBocVQe/EFMDh9i8MstYzOlkv1f+hIl
+wtcZQ3sntEkxnB2XoZdPFBXVAU56s4HNjna5Q3VHaQKBgQD+azMaWFtv1EXWCSXl
+k8jiDpfCmBN9U6WzklINE0ZR1w5CoW+8rLwS4tQwo49vhUWqHgHaBcy6bkKu2a23
+Bj3sqzuftnp+sMx18qcW85N2IgWn2cVqy9X+tmPf3htCpgdUIfCSyjAWbKjL1UyZ
+GJLQCTGl4gcC/6SsDvJDDvBoLwKBgQDEHWcQsjfuuHnwgYWjHx82SdG+h6XXJP/Z
+EkAEReDopGzUoZV4beiM2OUSleDbQDBSA/tUGxIQmVOGdMl/3ojW4XVaROi9px1w
+S8zKB3OcpwhXQS6oD8fmacEzvNn1tI5Ez1W/v6uJe5vrhug6kfqc4Jb1WO/BPzME
+uqE0+Ttn+QKBgQC0ZEYDtAqBLD2oGSxpr3OL9VTdgP6wqhKfVGwhIT2G4bkWvWiA
+mulvaq2RHyegpxpSGJyvfdU/itZ1K5rkXuShXngUMkqAcdNG/hpDR8mSxWTFMr+r
+jYPZ6nC+Vrl1dEtV+AqfygR2oey9OivpkWbnYt11BOJ72c9kv+Q+b+U9uQKBgAJq
+NkWvXB71aJL8lU+v52t8tzd4ZiNjEj9zCRTEY4OZ2rk3kCaee9mYJiH3dIBepvmr
+kOG1P6CysqOaNoz7iYXT2uUUqiUDtMoYNNpcAyFvsRuZ8uAg6Z49uSJQ9gIfigzw
+3KZyzsLvobjhvWRTPdnGrjUxNiqUA6XQQoHre77JAoGBAI+aV/RAS4+7Q2/pjq8A
+2t7eJmleYQhJRain1BxwtTk6sPB5PuET9FJvCOUGSLFZBvdXL/iL/+P1vQMJbkR7
++94JOVQhBPKMK+OfL6NfTVrAqtIFKy22A7aMJ1WUfiVTghRyZMJ4vFACbtKeBPWL
+AGphVaYNcCN+PZMbVfJyWyvN
+-----END PRIVATE KEY-----""",
     "client_email": "rateapi@solid-scheme-450717-q8.iam.gserviceaccount.com",
     "client_id": "102105676765134849082",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
