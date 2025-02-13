@@ -11,7 +11,7 @@ uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx"])
 if uploaded_file is not None:
     try:
         # ✅ Read data from "collective data" tab
-        df = pd.read_excel(uploaded_file, sheet_name="collective data", engine="openpyxl")
+        df = pd.read_excel(uploaded_file, sheet_name="Collective Data", engine="openpyxl")
 
         # ✅ Ensure required columns exist
         required_columns = [
