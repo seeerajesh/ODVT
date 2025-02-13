@@ -1,25 +1,34 @@
 import streamlit as st
-import json
-from google.oauth2 import service_account
+import pandas as pd
 
-# ✅ Step 1: Paste Google Credentials Directly Here
-GOOGLE_CREDENTIALS_JSON = """
-{
+# ✅ Step 1: Set Streamlit Title
+st.title("📊 Local File Upload - Data Viewer")
 
-}
-"""
+# ✅ Step 2: Allow File Upload
+uploaded_file = st.file_uploader("Upload an Excel or CSV file", type=["csv", "xls", "xlsx"])
 
-st.title("Google Credentials Check ✅")
-
-try:
-    # ✅ Step 2: Try Parsing the Credentials
-    creds_info = json.loads(GOOGLE_CREDENTIALS_JSON)
-    credentials = service_account.Credentials.from_service_account_info(creds_info)
+# ✅ Step 3: Process File if Uploaded
+if uploaded_file is not None:
+    # Detect file type and read
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)  # Read CSV
+    else:
+        df = pd.read_excel(uploaded_file)  # Read Excel
     
-    # ✅ Step 3: Display Success Message
-    st.success("✅ Google Credentials Loaded Successfully!")
-    
-except Exception as e:
-    # ❌ If Credentials Fail, Show Error
-    st.error("❌ Failed to Load Google Credentials!")
-    st.write(e)
+    # ✅ Display Data Table
+    st.write("### 📋 Data Preview:")
+    st.dataframe(df)
+
+    # ✅ Show Basic Info
+    st.write("### 📊 Summary Statistics:")
+    st.write(df.describe())
+
+    # ✅ Allow Column Selection for Visualization
+    column = st.selectbox("Select a column for line chart visualization", df.columns)
+
+    # ✅ Show Line Chart
+    st.write(f"### 📈 Line Chart for {column}")
+    st.line_chart(df[column])
+
+else:
+    st.info("📂 Please upload a file to begin.")
