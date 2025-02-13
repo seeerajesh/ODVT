@@ -10,8 +10,7 @@ GOOGLE_CREDENTIALS_JSON = """
     "project_id": "solid-scheme-450717-q8",
     "private_key_id": "f5d059394adf9d6f192c6068adf60d6564748882",
     "private_key": """-----BEGIN PRIVATE KEY-----
-MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDC50uyrwLu+8wQ
-pnjb/ZZzL2/YtdRySyJxA0RKl1orC4CxMLaqQG6//tz1GrO+vOrqvXZfuf/AWbP/
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDC50uyrwLu+8wQpnjb/ZZzL2/YtdRySyJxA0RKl1orC4CxMLaqQG6//tz1GrO+vOrqvXZfuf/AWbP/
 hRL3qAZy1uiMZTXsAtlwET4ZawvZL2Qv0TA5Gt3tW5ItSmgqHz3V8edsknRHAR5w
 NPSVLbDrQ0nF729VuunKg0bQtlUV5q0jwGeU9hKGFAyxKCnxtDFvtsRXF+YxC0fN
 W88s50aB695u0Cz1kX+jo8BtBv31dp+tAFQP+5CxT1g8M593vMTnCjrUeMFixlbL
