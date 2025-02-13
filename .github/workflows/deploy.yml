@@ -1,1 +1,9 @@
+name: No-Op Workflow
+on: [push]  # Runs on every push but does nothing
 
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Do Nothing
+        run: echo "Skipping workflow execution."
