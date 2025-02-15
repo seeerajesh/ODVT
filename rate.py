@@ -12,7 +12,7 @@ uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx"])
 if uploaded_file is not None:
     try:
         # ✅ Read data from both tabs
-        df_pricing = pd.read_excel(uploaded_file, sheet_name="collective data", engine="openpyxl")
+        df_pricing = pd.read_excel(uploaded_file, sheet_name="Collective Data", engine="openpyxl")
         df_ewb = pd.read_excel(uploaded_file, sheet_name="EWB", engine="openpyxl")
 
         # ✅ Ensure required columns exist in "collective data"
