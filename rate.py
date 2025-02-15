@@ -129,7 +129,7 @@ if uploaded_file is not None:
             with tab2:
                 st.header("📜 E-Way Bill Analysis for 2024")
                 st.write("### 🖼️ E-Way Bill Insights")
-                st.image("https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf", use_column_width=True)
+                st.image("https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf", use_container_width=True)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
