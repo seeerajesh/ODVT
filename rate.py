@@ -37,9 +37,7 @@ if uploaded_file is not None:
         else:
             # ✅ Convert "created_at" column to datetime format
             df_pricing["created_at"] = pd.to_datetime(df_pricing["created_at"])
-
-            # ✅ Convert "year" column to integer in EWB Data
-            df_ewb["year"] = df_ewb["year"].astype(int)
+            df_ewb["year"] = df_ewb["year"].astype(int)  # Convert "year" column to integer
 
             # ✅ Streamlit Navigation Tabs
             tab1, tab2 = st.tabs(["📦 Logistics Pricing Dashboard", "📜 E-Way Bill Dashboard"])
@@ -103,33 +101,38 @@ if uploaded_file is not None:
                     fig2 = px.pie(category_data, values="Vehicle Count", names="Category", hole=0.4,
                                   title=f"Total Vehicles Plying: {vehicle_count}")
                     col2.plotly_chart(fig2)
-                
-                ### **🔹 Section 2: Transporter Table (Sorted by Rating)**
-                if not filtered_pricing.empty:
-                    st.write("### 🚚 Transporter-wise Aggregated Data")
-                    transporter_agg = filtered_pricing.groupby("Transporter").agg(
-                        Vehicles_Operated=("Transporter", "count"),
-                        Total_Shipper_Rate=("Shipper", "sum"),
-                        Rating=("Rating", "max")
-                    ).reset_index().sort_values(by="Rating", ascending=False)
-                    st.dataframe(transporter_agg)
-
-                ### **🔹 Section 3: Summary Card**
-                st.subheader("📌 Summary Insights")
-                rate_trend = "Increasing" if filtered_pricing["Shipper"].iloc[-1] > filtered_pricing["Shipper"].iloc[0] else "Decreasing"
-                top_transporter = transporter_agg.iloc[0]["Transporter"] if not transporter_agg.empty else "No Data"
-
-                st.markdown(f"""
-                - **Rate Trend:** {rate_trend} 📈📉  
-                - **Recommended Transporter:** {top_transporter} 🚛  
-                - **Total Trips:** {len(filtered_pricing)} 🚚  
-                """)
 
             ### **🔹 TAB 2: EWB Dashboard**
             with tab2:
                 st.header("📜 E-Way Bill Analysis for 2024")
-                st.write("### 🖼️ E-Way Bill Insights")
-                st.image("https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf", use_container_width=True)
+
+                # ✅ Display Button to Open PDF (Instead of Embedding)
+                st.markdown("""
+                📄 **E-Way Bill 3-Year Journey Document:**  
+                👉 [Click here to view the PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
+                """, unsafe_allow_html=True)
+
+                # ✅ Filter 2024 Data
+                df_ewb_2024 = df_ewb[df_ewb["year"] == 2024]
+
+                # ✅ Aggregate by state_code: Sum Assessable Value & E-Way Bills
+                df_ewb_agg = df_ewb_2024.groupby("state_code").agg(
+                    {"assessable_value": "sum", "number_of_eway_bills": "sum"}
+                ).reset_index()
+
+                # ✅ Top 10 States by Assessable Value
+                top_10_states = df_ewb_agg.nlargest(10, "assessable_value")
+                st.write("### 💰 Top 10 States by Assessable Value")
+                fig1 = px.bar(top_10_states, x="state_code", y="assessable_value", 
+                              title="Assessable Value by Top 10 States", color="state_code")
+                st.plotly_chart(fig1)
+
+                # ✅ Top 10 States by Number of E-Way Bills
+                top_10_states_ewb = df_ewb_agg.nlargest(10, "number_of_eway_bills")
+                st.write("### 📝 Top 10 States by Number of E-Way Bills")
+                fig2 = px.bar(top_10_states_ewb, x="state_code", y="number_of_eway_bills", 
+                              title="Number of E-Way Bills by Top 10 States", color="state_code")
+                st.plotly_chart(fig2)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
