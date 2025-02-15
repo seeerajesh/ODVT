@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import openai  # Chatbot API
+import openai  
 
 # ✅ Set Streamlit Page Title
 st.set_page_config(page_title="Logistics & EWB Dashboard with Chatbot", layout="wide")
@@ -24,12 +24,109 @@ if uploaded_file is not None:
         df_ewb["year"] = df_ewb["year"].astype(int)  
 
         # ✅ Streamlit Navigation Tabs
-        tab1, tab2, tab3 = st.tabs(["📦 Logistics Pricing Dashboard", "📜 E-Way Bill Dashboard", "💬 Chatbot"])
+        tab1, tab2 = st.tabs(["📦 Logistics Pricing Dashboard", "📜 E-Way Bill Dashboard"])
 
         ### **🔹 TAB 1: Logistics Pricing Dashboard**
         with tab1:
             st.header("📦 Logistics Pricing Dashboard")
-            st.write("Use filters to explore logistics data.")
+
+            # ✅ Sidebar Filters with Multi-Select & "Select All"
+            st.sidebar.header("🔍 Filter Data")
+
+            def multi_select_with_select_all(label, column_values):
+                """Creates a multi-select filter with a 'Select All' option"""
+                options = ["Select All"] + list(column_values)
+                selected_values = st.sidebar.multiselect(label, options, default=["Select All"])
+
+                # If "Select All" is chosen, return all options except "Select All"
+                if "Select All" in selected_values:
+                    return list(column_values)
+                return selected_values
+
+            origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
+            destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
+            vehicle_filter = multi_select_with_select_all("Select Truck Type", df_pricing["Truck type"].unique())
+            origin_state_filter = multi_select_with_select_all("Select Origin State", df_pricing["Origin State"].unique())
+            destination_state_filter = multi_select_with_select_all("Select Destination State", df_pricing["Destination State"].unique())
+            transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique())
+
+            # ✅ Date Range Filter
+            date_range = st.sidebar.date_input("Select Date Range", 
+                                               [df_pricing["created_at"].min().date(), df_pricing["created_at"].max().date()])
+            start_date = pd.to_datetime(date_range[0])  
+            end_date = pd.to_datetime(date_range[1])  
+
+            # ✅ Apply Filters
+            filtered_pricing = df_pricing[
+                df_pricing["Origin Locality"].isin(origin_filter) &
+                df_pricing["Destination Locality"].isin(destination_filter) &
+                df_pricing["Truck type"].isin(vehicle_filter) &
+                df_pricing["Origin State"].isin(origin_state_filter) &
+                df_pricing["Destination State"].isin(destination_state_filter) &
+                df_pricing["Transporter"].isin(transporter_filter) &
+                df_pricing["created_at"].between(start_date, end_date)
+            ]
+
+            ### **🔹 Section 1: Top Panel - Circle Charts**
+            col1, col2 = st.columns(2)
+
+            if not filtered_pricing.empty:
+                # ✅ Shipper Rate Breakdown
+                shipper_rate_total = filtered_pricing["Shipper"].sum()
+                rate_type_data = filtered_pricing.groupby("Rate type")["Shipper"].sum().reset_index()
+                fig1 = px.pie(rate_type_data, values="Shipper", names="Rate type", hole=0.4,
+                              title=f"Shipper Rate Breakdown (Total: ₹{shipper_rate_total:,.2f})")
+                col1.plotly_chart(fig1)
+
+                # ✅ Vehicle Count Breakdown
+                vehicle_count = len(filtered_pricing)
+                category_data = filtered_pricing["Category"].value_counts().reset_index()
+                category_data.columns = ["Category", "Vehicle Count"]
+                fig2 = px.pie(category_data, values="Vehicle Count", names="Category", hole=0.4,
+                              title=f"Total Vehicles Plying: {vehicle_count}")
+                col2.plotly_chart(fig2)
+
+            # ✅ Floating Chatbot Widget (Collapsible)
+            with st.expander("💬 Open Chatbot"):
+                st.subheader("AI Chatbot for Data Queries")
+
+                # ✅ Initialize chat history
+                if "messages" not in st.session_state:
+                    st.session_state.messages = []
+
+                # ✅ Display chat history
+                for message in st.session_state.messages:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+                # ✅ User input
+                user_query = st.chat_input("Ask me about logistics data...")
+
+                if user_query:
+                    # ✅ Display user message in chat
+                    st.session_state.messages.append({"role": "user", "content": user_query})
+                    with st.chat_message("user"):
+                        st.markdown(user_query)
+
+                    try:
+                        # ✅ Process query using OpenAI API (Fixed for latest version)
+                        response = openai.ChatCompletion.create(
+                            model="gpt-4",  
+                            messages=[
+                                {"role": "system", "content": "You are a logistics assistant. Respond with relevant data insights from the provided DataFrame."},
+                                {"role": "user", "content": user_query}
+                            ]
+                        )
+
+                        bot_reply = response.choices[0].message.content  # Extract text from response
+
+                        # ✅ Display bot response
+                        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                        with st.chat_message("assistant"):
+                            st.markdown(bot_reply)
+
+                    except Exception as e:
+                        st.error(f"❌ Chatbot Error: {e}")
 
         ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
@@ -38,44 +135,6 @@ if uploaded_file is not None:
             📄 **E-Way Bill 3-Year Journey Document:**  
             👉 [Click here to view the PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
             """, unsafe_allow_html=True)
-
-        ### **🔹 TAB 3: Chatbot**
-        with tab3:
-            st.header("💬 AI Chatbot for Data Queries")
-
-            # ✅ Initialize chat history
-            if "messages" not in st.session_state:
-                st.session_state.messages = []
-
-            # ✅ Display chat history
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            # ✅ User input
-            user_query = st.chat_input("Ask me about logistics data...")
-
-            if user_query:
-                # ✅ Display user message in chat
-                st.session_state.messages.append({"role": "user", "content": user_query})
-                with st.chat_message("user"):
-                    st.markdown(user_query)
-
-                # ✅ Process query using OpenAI API
-                response = openai.ChatCompletion.create(
-                    model="gpt-4",  # GPT-4 for better accuracy
-                    messages=[
-                        {"role": "system", "content": "You are a logistics assistant. Respond with relevant data insights from the provided DataFrame."},
-                        {"role": "user", "content": user_query}
-                    ]
-                )
-
-                bot_reply = response["choices"][0]["message"]["content"]
-
-                # ✅ Display bot response
-                st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-                with st.chat_message("assistant"):
-                    st.markdown(bot_reply)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
