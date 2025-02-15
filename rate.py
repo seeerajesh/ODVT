@@ -1,14 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from openai import OpenAI  # ✅ Correct OpenAI import for >=1.0.0
 
 # ✅ Set Streamlit Page Title
-st.set_page_config(page_title="Logistics & EWB Dashboard with Chatbot", layout="wide")
-st.title("📊 Logistics & EWB Dashboard with Chatbot Support")
-
-# ✅ Initialize OpenAI Client
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+st.set_page_config(page_title="Logistics & EWB Dashboard", layout="wide")
+st.title("📊 Logistics & EWB Dashboard")
 
 # ✅ File Upload
 uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx"])
@@ -103,48 +99,6 @@ if uploaded_file is not None:
                 fig3 = px.line(aggregated_pricing, x="created_at", y="Shipper", title="Shipper Rate Trend")
                 st.plotly_chart(fig3)
 
-            # ✅ Floating Chatbot Widget (Collapsible)
-            with st.expander("💬 Open Chatbot"):
-                st.subheader("AI Chatbot for Data Queries")
-
-                # ✅ Initialize chat history
-                if "messages" not in st.session_state:
-                    st.session_state.messages = []
-
-                # ✅ Display chat history
-                for message in st.session_state.messages:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-
-                # ✅ User input
-                user_query = st.chat_input("Ask me about logistics data...")
-
-                if user_query:
-                    # ✅ Display user message in chat
-                    st.session_state.messages.append({"role": "user", "content": user_query})
-                    with st.chat_message("user"):
-                        st.markdown(user_query)
-
-                    try:
-                        # ✅ Process query using OpenAI API (Fixed for latest version)
-                        response = client.chat.completions.create(
-                            model="gpt-4",  
-                            messages=[
-                                {"role": "system", "content": "You are a logistics assistant. Respond with relevant data insights from the provided DataFrame."},
-                                {"role": "user", "content": user_query}
-                            ]
-                        )
-
-                        bot_reply = response.choices[0].message.content  
-
-                        # ✅ Display bot response
-                        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-                        with st.chat_message("assistant"):
-                            st.markdown(bot_reply)
-
-                    except Exception as e:
-                        st.error(f"❌ Chatbot Error: {e}")
-
         ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
             st.header("📜 E-Way Bill Analysis for 2024")
@@ -152,6 +106,28 @@ if uploaded_file is not None:
             📄 **E-Way Bill 3-Year Journey Document:**  
             👉 [Click here to view the PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
             """, unsafe_allow_html=True)
+
+            # ✅ Filter 2024 Data
+            df_ewb_2024 = df_ewb[df_ewb["year"] == 2024]
+
+            # ✅ Aggregate by state_code: Sum Assessable Value & E-Way Bills
+            df_ewb_agg = df_ewb_2024.groupby("state_code").agg(
+                {"assessable_value": "sum", "number_of_eway_bills": "sum"}
+            ).reset_index()
+
+            # ✅ Top 10 States by Assessable Value
+            top_10_states = df_ewb_agg.nlargest(10, "assessable_value")
+            st.write("### 💰 Top 10 States by Assessable Value")
+            fig1 = px.bar(top_10_states, x="state_code", y="assessable_value", 
+                          title="Assessable Value by Top 10 States", color="state_code")
+            st.plotly_chart(fig1)
+
+            # ✅ Top 10 States by Number of E-Way Bills
+            top_10_states_ewb = df_ewb_agg.nlargest(10, "number_of_eway_bills")
+            st.write("### 📝 Top 10 States by Number of E-Way Bills")
+            fig2 = px.bar(top_10_states_ewb, x="state_code", y="number_of_eway_bills", 
+                          title="Number of E-Way Bills by Top 10 States", color="state_code")
+            st.plotly_chart(fig2)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
