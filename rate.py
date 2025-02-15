@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import openai  
+from openai import OpenAI  # ✅ Correct OpenAI import for >=1.0.0
 
 # ✅ Set Streamlit Page Title
 st.set_page_config(page_title="Logistics & EWB Dashboard with Chatbot", layout="wide")
-st.title("📊 Logistics Pricing & EWB Dashboard with Chatbot Support")
+st.title("📊 Logistics & EWB Dashboard with Chatbot Support")
 
-# ✅ Load OpenAI API Key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# ✅ Initialize OpenAI Client
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # ✅ File Upload
 uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx"])
@@ -86,6 +86,23 @@ if uploaded_file is not None:
                               title=f"Total Vehicles Plying: {vehicle_count}")
                 col2.plotly_chart(fig2)
 
+            ### **🔹 Section 2: Transporter Table (Sorted by Rating)**
+            if not filtered_pricing.empty:
+                st.write("### 🚚 Transporter-wise Aggregated Data")
+                transporter_agg = filtered_pricing.groupby("Transporter").agg(
+                    Vehicles_Operated=("Transporter", "count"),
+                    Total_Shipper_Rate=("Shipper", "sum"),
+                    Rating=("Rating", "max")
+                ).reset_index().sort_values(by="Rating", ascending=False)
+                st.dataframe(transporter_agg)
+
+            ### **🔹 Section 3: Line Chart for Trending Shipper Rates**
+            if not filtered_pricing.empty:
+                st.write("### 📈 Trending Shipper Rates Over Time")
+                aggregated_pricing = filtered_pricing.groupby(pd.Grouper(key="created_at", freq="M")).agg({"Shipper": "mean"}).reset_index()
+                fig3 = px.line(aggregated_pricing, x="created_at", y="Shipper", title="Shipper Rate Trend")
+                st.plotly_chart(fig3)
+
             # ✅ Floating Chatbot Widget (Collapsible)
             with st.expander("💬 Open Chatbot"):
                 st.subheader("AI Chatbot for Data Queries")
@@ -110,7 +127,7 @@ if uploaded_file is not None:
 
                     try:
                         # ✅ Process query using OpenAI API (Fixed for latest version)
-                        response = openai.ChatCompletion.create(
+                        response = client.chat.completions.create(
                             model="gpt-4",  
                             messages=[
                                 {"role": "system", "content": "You are a logistics assistant. Respond with relevant data insights from the provided DataFrame."},
@@ -118,7 +135,7 @@ if uploaded_file is not None:
                             ]
                         )
 
-                        bot_reply = response.choices[0].message.content  # Extract text from response
+                        bot_reply = response.choices[0].message.content  
 
                         # ✅ Display bot response
                         st.session_state.messages.append({"role": "assistant", "content": bot_reply})
