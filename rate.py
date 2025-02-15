@@ -12,7 +12,7 @@ uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx"])
 if uploaded_file is not None:
     try:
         # ✅ Read data from both tabs
-        df_pricing = pd.read_excel(uploaded_file, sheet_name="collective data", engine="openpyxl")
+        df_pricing = pd.read_excel(uploaded_file, sheet_name="Collective Data", engine="openpyxl")
         df_ewb = pd.read_excel(uploaded_file, sheet_name="EWB", engine="openpyxl")
 
         # ✅ Ensure required columns exist in "collective data"
@@ -45,7 +45,7 @@ if uploaded_file is not None:
             # ✅ Streamlit Navigation Tabs
             tab1, tab2 = st.tabs(["📦 Logistics Pricing Dashboard", "📜 E-Way Bill Dashboard"])
 
-            ### **🔹 TAB 1: Pricing Dashboard (From "collective data")**
+            ### **🔹 TAB 1: Pricing Dashboard (From "Collective Data")**
             with tab1:
                 st.header("📦 Logistics Pricing Dashboard")
                 
