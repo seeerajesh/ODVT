@@ -92,6 +92,26 @@ if uploaded_file is not None:
         with tab1:
             st.header("📦 Overview Dashboard")
 
+            ### **🔹 Circle Chart 1: Total Shipper Rate Split by Rate Type**
+            st.subheader("📌 Shipper Rate Split by Rate Type")
+            rate_type_data = filtered_pricing.groupby("Rate type").agg(Total_Shipper_Rate=("Shipper", "sum")).reset_index()
+            fig1 = px.pie(rate_type_data, names="Rate type", values="Total_Shipper_Rate", 
+                          title="Total Shipper Rate Split by Rate Type", 
+                          hover_data=["Total_Shipper_Rate"],
+                          labels={"Rate type": "Rate Type", "Total_Shipper_Rate": "Total Shipper Rate"})
+            fig1.update_traces(textinfo="percent+label", pull=[0.1, 0.1, 0.1])
+            st.plotly_chart(fig1)
+
+            ### **🔹 Circle Chart 2: Total Count of Vehicles Split by Category**
+            st.subheader("📌 Vehicle Count Split by Category")
+            category_data = filtered_pricing.groupby("Category").agg(Vehicle_Count=("Shipper", "count")).reset_index()
+            fig2 = px.pie(category_data, names="Category", values="Vehicle_Count", 
+                          title="Total Count of Vehicles Split by Category", 
+                          hover_data=["Vehicle_Count"],
+                          labels={"Category": "Category", "Vehicle_Count": "Vehicle Count"})
+            fig2.update_traces(textinfo="percent+label", pull=[0.1, 0.1, 0.1])
+            st.plotly_chart(fig2)
+
             ### **🔹 Origin → Destination Table**
             st.subheader("📌 Origin to Destination Rate Summary")
             od_table = filtered_pricing.groupby(["Origin Locality", "Destination Locality"]).agg(
@@ -100,6 +120,7 @@ if uploaded_file is not None:
                 Avg_Toll_Cost=("Toll Cost", "mean"),
                 Avg_Lead_Distance=("Lead Distance", "mean")
             ).reset_index()
+            od_table = od_table.round(2)  # Round to 2 decimal places
             st.dataframe(od_table)
 
         ### **🔹 TAB 2: Transporter Discovery Dashboard**
@@ -114,6 +135,7 @@ if uploaded_file is not None:
                 Avg_ETA=("ETA", "mean"),
                 Avg_Shipper_Rate=("Shipper", "mean")
             ).reset_index()
+            transporter_table = transporter_table.round(2)  # Round to 2 decimal places
             st.dataframe(transporter_table)
 
             # ✅ Bubble Chart: Origin to Destination Trips (by Transporter)
@@ -147,6 +169,7 @@ if uploaded_file is not None:
                 title="Trips Between Origin and Destination States by Transporter",
                 labels={"Origin State": "Origin State", "Destination State": "Destination State", "Total_Trips": "Number of Trips"}
             )
+            fig_bubble.update_traces(marker=dict(sizemode="diameter", line=dict(width=2, color='DarkSlateGrey')))
             st.plotly_chart(fig_bubble)
 
         ### **🔹 TAB 3: EWB Dashboard**
