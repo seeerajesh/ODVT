@@ -35,23 +35,38 @@ if uploaded_file is not None:
         # ✅ Sidebar Common Filters (Applies to Both Overview & Transporter Discovery)
         st.sidebar.header("🔍 Common Filters")
 
-        origin_filter = st.sidebar.multiselect("Select Origin Locality", df_pricing["Origin Locality"].unique(), 
-                                               default=[], key="origin_filter")
-        destination_filter = st.sidebar.multiselect("Select Destination Locality", df_pricing["Destination Locality"].unique(), 
-                                                    default=[], key="destination_filter")
-        transporter_filter = st.sidebar.multiselect("Select Transporter", df_pricing["Transporter"].unique(), 
-                                                    default=[], key="transporter_filter")
-        
-        rating_filter = st.sidebar.selectbox("Select Transporter Rating", 
-                                             ["<1", "1-3", "3-4", ">4"], key="rating_filter")
+        def multi_select_with_select_all(label, column_values, key):
+            """Creates a multi-select filter with 'Select All' as default"""
+            options = ["Select All"] + list(column_values)
+            selected_values = st.sidebar.multiselect(label, options, default=["Select All"], key=key)
+            return list(column_values) if "Select All" in selected_values else selected_values
 
-        # ✅ Date Range Selection
+        # ✅ Filters
+        origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique(), key="origin_filter")
+        destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique(), key="destination_filter")
+        transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique(), key="transporter_filter")
+
+        # ✅ Numeric Rating Filter (Multi-Select)
+        rating_ranges = {
+            "<2": df_pricing[df_pricing["Rating"] < 2]["Rating"],
+            "2-3": df_pricing[(df_pricing["Rating"] >= 2) & (df_pricing["Rating"] < 3)]["Rating"],
+            "3-4": df_pricing[(df_pricing["Rating"] >= 3) & (df_pricing["Rating"] < 4)]["Rating"],
+            ">4": df_pricing[df_pricing["Rating"] >= 4]["Rating"]
+        }
+        selected_ratings = st.sidebar.multiselect("Select Transporter Rating", ["Select All", "<2", "2-3", "3-4", ">4"], default=["Select All"], key="rating_filter")
+
+        if "Select All" in selected_ratings:
+            selected_ratings = list(rating_ranges.keys())
+
+        rating_filter_values = pd.concat([rating_ranges[r] for r in selected_ratings])
+
+        # ✅ Date Range Selection (Default: 1 Year)
         date_options = {
             "Month to Date": datetime.today().replace(day=1),
             "3 Months": datetime.today() - timedelta(days=90),
             "6 Months": datetime.today() - timedelta(days=180),
             "1 Year": datetime.today() - timedelta(days=365),
-            "Full Range": None  # Custom date input
+            "Full Range": None  
         }
         selected_date_range = st.sidebar.radio("Select Date Range", list(date_options.keys()), index=3)
 
@@ -69,6 +84,7 @@ if uploaded_file is not None:
             (df_pricing["Origin Locality"].isin(origin_filter)) &
             (df_pricing["Destination Locality"].isin(destination_filter)) &
             (df_pricing["Transporter"].isin(transporter_filter)) &
+            (df_pricing["Rating"].isin(rating_filter_values)) &
             (df_pricing["created_at"].between(start_date, end_date))
         ]
 
@@ -86,28 +102,6 @@ if uploaded_file is not None:
             ).reset_index()
             st.dataframe(od_table)
 
-            ### **🔹 Bubble Chart: Top 5 Origin-Destination States**
-            st.subheader("📌 Shipper Rate by Origin-Destination (Rounded to 2 Decimals)")
-            top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
-            state_agg = filtered_pricing[
-                (filtered_pricing["Origin State"].isin(top_states)) & 
-                (filtered_pricing["Destination State"].isin(top_states))
-            ].groupby(["Origin State", "Destination State"]).agg(
-                num_trips=("Shipper", "count"),
-                avg_shipper_rate=("Shipper", "mean")
-            ).reset_index()
-
-            state_agg["avg_shipper_rate"] = state_agg["avg_shipper_rate"].round(2)
-
-            fig1 = px.scatter(state_agg, 
-                              x="Origin State", y="Destination State",
-                              size="avg_shipper_rate", color="avg_shipper_rate",
-                              title="Top 5 Origin-Destination Pairs by Shipper Rate",
-                              hover_name="Origin State", size_max=30,
-                              text="avg_shipper_rate")  
-            fig1.update_traces(textposition="top center")
-            st.plotly_chart(fig1)
-
         ### **🔹 TAB 2: Transporter Discovery Dashboard**
         with tab2:
             st.header("🚛 Transporter Discovery Dashboard")
@@ -122,16 +116,38 @@ if uploaded_file is not None:
             ).reset_index()
             st.dataframe(transporter_table)
 
-            ### **🔹 Transporter Bubble Chart**
-            st.subheader("📌 Transporter Performance by Origin-Destination")
-            fig2 = px.scatter(filtered_pricing, 
-                              x="Origin State", y="Destination State",
-                              size="Shipper", color="Transporter",
-                              title="Transporter Activity by Origin-Destination",
-                              hover_name="Transporter", size_max=30,
-                              text="Shipper")  
-            fig2.update_traces(textposition="top center")
-            st.plotly_chart(fig2)
+            # ✅ Bubble Chart: Origin to Destination Trips (by Transporter)
+            st.subheader("📌 Origin to Destination Transporter Performance")
+            
+            # Create the bubble chart data
+            bubble_data = filtered_pricing.groupby(
+                ["Origin State", "Destination State", "Transporter"]
+            ).agg(
+                Total_Trips=("Shipper", "count")
+            ).reset_index()
+
+            # Select origin and destination states via multi-select
+            origin_states = bubble_data["Origin State"].unique()
+            destination_states = bubble_data["Destination State"].unique()
+
+            selected_origin_states = st.multiselect("Select Origin States", origin_states, default=origin_states)
+            selected_destination_states = st.multiselect("Select Destination States", destination_states, default=destination_states)
+
+            # Filter the bubble data
+            bubble_filtered_data = bubble_data[
+                (bubble_data["Origin State"].isin(selected_origin_states)) &
+                (bubble_data["Destination State"].isin(selected_destination_states))
+            ]
+
+            # Create the bubble chart
+            fig_bubble = px.scatter(
+                bubble_filtered_data,
+                x="Origin State", y="Destination State", size="Total_Trips", color="Transporter",
+                hover_name="Transporter", hover_data=["Total_Trips"],
+                title="Trips Between Origin and Destination States by Transporter",
+                labels={"Origin State": "Origin State", "Destination State": "Destination State", "Total_Trips": "Number of Trips"}
+            )
+            st.plotly_chart(fig_bubble)
 
         ### **🔹 TAB 3: EWB Dashboard**
         with tab3:
@@ -158,6 +174,15 @@ if uploaded_file is not None:
             fig4 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
                           title="Number of EWB YoY (Split by Supply Type)")
             st.plotly_chart(fig4)
+
+            # ✅ Chart 3: Bubble Chart - Top 5 States by Assessable Value YoY
+            top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
+            df_states = df_ewb[df_ewb["state"].isin(top_states)].groupby(["year", "state"]).agg(total_value=("assessable_value", "sum")).reset_index()
+            
+            fig5 = px.scatter(df_states, x="year", y="state", size="total_value", color="state",
+                              title="Top 5 States by Assessable Value YoY", text="total_value")
+            fig5.update_traces(textposition="top center")
+            st.plotly_chart(fig5)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
