@@ -98,20 +98,15 @@ if uploaded_file is not None:
                               title=f"Total Vehicles Plying: {vehicle_count}")
                 col2.plotly_chart(fig2)
 
-            ### **🔹 TAB 2: EWB Dashboard**
+        ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
             st.header("📜 E-Way Bill Analysis for 2024")
 
-            # ✅ Fixed PDF Embedding (No Chrome Block Issue)
+            # ✅ Fixed PDF Embedding → Clickable Redirect Link
             st.markdown("""
             ### 📄 **E-Way Bill 3-Year Journey**
-            👉 [View Full PDF](https://drive.google.com/file/d/1N2NHRznQXvQFXojk3EY2Ml6NsdLbmDBR/view)
-
-            #### 📌 **Embedded Preview**
-            """, unsafe_allow_html=True)
-
-            pdf_url = "https://drive.google.com/file/d/1N2NHRznQXvQFXojk3EY2Ml6NsdLbmDBR/preview"
-            st.components.v1.iframe(pdf_url, height=600, scrolling=True)
+            👉 [Click here to view PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
+            """)
 
             # ✅ EWB Bar Charts
             df_ewb_agg = df_ewb.groupby(["year", "type_of_supply"]).agg(
@@ -131,8 +126,8 @@ if uploaded_file is not None:
 
             # ✅ Chart 3: Missing Chart for Top 5 States (YoY Assessable Value)
             top_5_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
-            df_states = df_ewb[df_ewb["State"].isin(top_5_states)]
-            fig6 = px.bar(df_states, x="State", y="assessable_value", color="year",
+            df_states = df_ewb[df_ewb["state"].isin(top_5_states)]  # ✅ Changed to "state"
+            fig6 = px.bar(df_states, x="state", y="assessable_value", color="year",
                           title="Assessable Value in Top 5 States (YoY)")
             st.plotly_chart(fig6)
 
