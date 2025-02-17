@@ -1,23 +1,36 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import requests
+from io import BytesIO
+from PIL import Image
+from datetime import datetime, timedelta
 
 # ✅ Set Streamlit Page Title
 st.set_page_config(page_title="Logistics & EWB Dashboard", layout="wide")
 st.title("📊 Logistics & EWB Dashboard")
+
+# ✅ Cache data loading to improve performance
+@st.cache_data
+def load_data(file):
+    df_pricing = pd.read_excel(file, sheet_name="Collective Data", engine="openpyxl")
+    df_ewb = pd.read_excel(file, sheet_name="EWB", engine="openpyxl")
+    
+    # Convert "created_at" to datetime
+    df_pricing["created_at"] = pd.to_datetime(df_pricing["created_at"])
+    df_ewb["year"] = df_ewb["year"].astype(int)
+
+    # Remove #N/A values for numeric calculations
+    df_pricing = df_pricing.replace("#N/A", pd.NA).dropna(subset=["Toll Cost", "ETA", "Lead Distance", "Shipper"])
+    
+    return df_pricing, df_ewb
 
 # ✅ File Upload
 uploaded_file = st.file_uploader("Upload an Excel file", type=["xls", "xlsx"])
 
 if uploaded_file is not None:
     try:
-        # ✅ Read data from both tabs
-        df_pricing = pd.read_excel(uploaded_file, sheet_name="Collective Data", engine="openpyxl")
-        df_ewb = pd.read_excel(uploaded_file, sheet_name="EWB", engine="openpyxl")
-
-        # ✅ Convert "created_at" column to datetime format
-        df_pricing["created_at"] = pd.to_datetime(df_pricing["created_at"])
-        df_ewb["year"] = df_ewb["year"].astype(int)  
+        df_pricing, df_ewb = load_data(uploaded_file)
 
         # ✅ Streamlit Navigation Tabs
         tab1, tab2 = st.tabs(["📦 Logistics Pricing Dashboard", "📜 E-Way Bill Dashboard"])
@@ -26,7 +39,7 @@ if uploaded_file is not None:
         with tab1:
             st.header("📦 Logistics Pricing Dashboard")
 
-            # ✅ Sidebar Filters with Multi-Select & "Select All"
+            # ✅ Sidebar Filters
             st.sidebar.header("🔍 Filter Data")
 
             def multi_select_with_select_all(label, column_values):
@@ -34,36 +47,32 @@ if uploaded_file is not None:
                 options = ["Select All"] + list(column_values)
                 selected_values = st.sidebar.multiselect(label, options, default=["Select All"])
 
-                # If "Select All" is chosen, return all options except "Select All"
-                if "Select All" in selected_values:
-                    return list(column_values)
-                return selected_values
+                return list(column_values) if "Select All" in selected_values else selected_values
 
+            # ✅ Filters
             origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
             destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
-            vehicle_filter = multi_select_with_select_all("Select Truck Type", df_pricing["Truck type"].unique())
-            origin_state_filter = multi_select_with_select_all("Select Origin State", df_pricing["Origin State"].unique())
-            destination_state_filter = multi_select_with_select_all("Select Destination State", df_pricing["Destination State"].unique())
-            transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique())
 
-            # ✅ Date Range Filter
-            date_range = st.sidebar.date_input("Select Date Range", 
-                                               [df_pricing["created_at"].min().date(), df_pricing["created_at"].max().date()])
-            start_date = pd.to_datetime(date_range[0])  
-            end_date = pd.to_datetime(date_range[1])  
+            # ✅ Date Range Predefined Filters
+            date_options = {
+                "Month to Date": datetime.today().replace(day=1),
+                "1 Month": datetime.today() - timedelta(days=30),
+                "3 Months": datetime.today() - timedelta(days=90),
+                "6 Months": datetime.today() - timedelta(days=180),
+                "1 Year": datetime.today() - timedelta(days=365)
+            }
+            selected_date_range = st.sidebar.radio("Select Date Range", list(date_options.keys()), index=4)
+            start_date = date_options[selected_date_range]
+            end_date = datetime.today()
 
             # ✅ Apply Filters
             filtered_pricing = df_pricing[
-                df_pricing["Origin Locality"].isin(origin_filter) &
-                df_pricing["Destination Locality"].isin(destination_filter) &
-                df_pricing["Truck type"].isin(vehicle_filter) &
-                df_pricing["Origin State"].isin(origin_state_filter) &
-                df_pricing["Destination State"].isin(destination_state_filter) &
-                df_pricing["Transporter"].isin(transporter_filter) &
-                df_pricing["created_at"].between(start_date, end_date)
+                (df_pricing["Origin Locality"].isin(origin_filter)) &
+                (df_pricing["Destination Locality"].isin(destination_filter)) &
+                (df_pricing["created_at"].between(start_date, end_date))
             ]
 
-            ### **🔹 Section 1: Top Panel - Circle Charts**
+            ### **🔹 Top Panel - Circle Charts**
             col1, col2 = st.columns(2)
 
             if not filtered_pricing.empty:
@@ -82,52 +91,57 @@ if uploaded_file is not None:
                               title=f"Total Vehicles Plying: {vehicle_count}")
                 col2.plotly_chart(fig2)
 
-            ### **🔹 Section 2: Transporter Table (Sorted by Rating)**
-            if not filtered_pricing.empty:
-                st.write("### 🚚 Transporter-wise Aggregated Data")
-                transporter_agg = filtered_pricing.groupby("Transporter").agg(
-                    Vehicles_Operated=("Transporter", "count"),
-                    Total_Shipper_Rate=("Shipper", "sum"),
-                    Rating=("Rating", "max")
-                ).reset_index().sort_values(by="Rating", ascending=False)
-                st.dataframe(transporter_agg)
+            ### **🔹 New Cards for Toll Cost & ETA**
+            avg_toll = filtered_pricing["Toll Cost"].mean()
+            avg_eta = filtered_pricing["ETA"].mean()
+            col1.metric("🚦 Average Toll Cost", f"₹{avg_toll:,.2f}")
+            col2.metric("⏳ Average ETA", f"{avg_eta:.1f} hours")
 
-            ### **🔹 Section 3: Line Chart for Trending Shipper Rates**
-            if not filtered_pricing.empty:
-                st.write("### 📈 Trending Shipper Rates Over Time")
-                aggregated_pricing = filtered_pricing.groupby(pd.Grouper(key="created_at", freq="M")).agg({"Shipper": "mean"}).reset_index()
-                fig3 = px.line(aggregated_pricing, x="created_at", y="Shipper", title="Shipper Rate Trend")
-                st.plotly_chart(fig3)
+            ### **🔹 Bubble Chart (Origin vs Destination States)**
+            state_agg = filtered_pricing.groupby(["Origin State", "Destination State"]).agg(
+                num_trips=("Shipper", "count"), avg_shipper_rate=("Shipper", "mean")
+            ).reset_index()
+            top_states = state_agg.nlargest(10, "num_trips")
+            fig3 = px.scatter(top_states, x="Origin State", y="Destination State",
+                              size="avg_shipper_rate", color="avg_shipper_rate",
+                              title="Top 10 Origin-Destination Pairs by Shipper Rate",
+                              hover_name="Origin State", size_max=30)
+            st.plotly_chart(fig3)
 
         ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
             st.header("📜 E-Way Bill Analysis for 2024")
-            st.markdown("""
-            📄 **E-Way Bill 3-Year Journey Document:**  
-            👉 [Click here to view the PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
-            """, unsafe_allow_html=True)
 
-            # ✅ Filter 2024 Data
-            df_ewb_2024 = df_ewb[df_ewb["year"] == 2024]
+            # ✅ Embed PDF Images from EWB Journey
+            url = "https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf"
+            response = requests.get(url)
+            if response.status_code == 200:
+                pdf_data = BytesIO(response.content)
+                with pdf_data as f:
+                    images = Image.open(f)
+                    st.image(images, caption="E-Way Bill Journey", use_column_width=True)
 
-            # ✅ Aggregate by state_code: Sum Assessable Value & E-Way Bills
-            df_ewb_agg = df_ewb_2024.groupby("state_code").agg(
-                {"assessable_value": "sum", "number_of_eway_bills": "sum"}
+            # ✅ EWB Bar Charts
+            df_ewb_agg = df_ewb.groupby(["year", "type_of_supply"]).agg(
+                total_value=("assessable_value", "sum"),
+                total_ewaybills=("number_of_eway_bills", "sum")
             ).reset_index()
 
-            # ✅ Top 10 States by Assessable Value
-            top_10_states = df_ewb_agg.nlargest(10, "assessable_value")
-            st.write("### 💰 Top 10 States by Assessable Value")
-            fig1 = px.bar(top_10_states, x="state_code", y="assessable_value", 
-                          title="Assessable Value by Top 10 States", color="state_code")
-            st.plotly_chart(fig1)
+            # ✅ Chart 1: Yearly Assessable Value
+            fig4 = px.bar(df_ewb_agg, x="year", y="total_value", color="type_of_supply",
+                          title="Assessable Value YoY (Split by Supply Type)")
+            st.plotly_chart(fig4)
 
-            # ✅ Top 10 States by Number of E-Way Bills
-            top_10_states_ewb = df_ewb_agg.nlargest(10, "number_of_eway_bills")
-            st.write("### 📝 Top 10 States by Number of E-Way Bills")
-            fig2 = px.bar(top_10_states_ewb, x="state_code", y="number_of_eway_bills", 
-                          title="Number of E-Way Bills by Top 10 States", color="state_code")
-            st.plotly_chart(fig2)
+            # ✅ Chart 2: Yearly Number of EWB
+            fig5 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
+                          title="Number of EWB YoY (Split by Supply Type)")
+            st.plotly_chart(fig5)
+
+            # ✅ Chart 3: Top 5 States by Assessable Value
+            df_states = df_ewb[df_ewb["State"].isin(["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"])]
+            fig6 = px.bar(df_states, x="State", y="assessable_value", color="year",
+                          title="Assessable Value in Top 5 States (YoY)")
+            st.plotly_chart(fig6)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
