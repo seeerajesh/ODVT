@@ -1,9 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import requests
-from io import BytesIO
-from PIL import Image
 from datetime import datetime, timedelta
 
 # ✅ Set Streamlit Page Title
@@ -97,29 +94,39 @@ if uploaded_file is not None:
             col1.metric("🚦 Average Toll Cost", f"₹{avg_toll:,.2f}")
             col2.metric("⏳ Average ETA", f"{avg_eta:.1f} hours")
 
-            ### **🔹 Bubble Chart (Origin vs Destination States)**
-            state_agg = filtered_pricing.groupby(["Origin State", "Destination State"]).agg(
-                num_trips=("Shipper", "count"), avg_shipper_rate=("Shipper", "mean")
+            ### **🔹 Bubble Chart: Top 5 Origin & Destination States**
+            top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
+            state_agg = filtered_pricing[
+                (filtered_pricing["Origin State"].isin(top_states)) & 
+                (filtered_pricing["Destination State"].isin(top_states))
+            ].groupby(["Origin State", "Destination State"]).agg(
+                num_trips=("Shipper", "count"),
+                avg_shipper_rate=("Shipper", "mean")
             ).reset_index()
-            top_states = state_agg.nlargest(10, "num_trips")
-            fig3 = px.scatter(top_states, x="Origin State", y="Destination State",
+
+            fig3 = px.scatter(state_agg, 
+                              x="Origin State", y="Destination State",
                               size="avg_shipper_rate", color="avg_shipper_rate",
-                              title="Top 10 Origin-Destination Pairs by Shipper Rate",
-                              hover_name="Origin State", size_max=30)
+                              title="Top 5 Origin-Destination Pairs by Shipper Rate",
+                              hover_name="Origin State", size_max=30,
+                              text="avg_shipper_rate")  # ✅ Display values inside bubbles
+            fig3.update_traces(textposition="top center")
             st.plotly_chart(fig3)
 
         ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
             st.header("📜 E-Way Bill Analysis for 2024")
 
-            # ✅ Embed PDF Images from EWB Journey
-            url = "https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf"
-            response = requests.get(url)
-            if response.status_code == 200:
-                pdf_data = BytesIO(response.content)
-                with pdf_data as f:
-                    images = Image.open(f)
-                    st.image(images, caption="E-Way Bill Journey", use_column_width=True)
+            # ✅ Embed EWB PDF
+            st.markdown("""
+            ### 📄 **E-Way Bill 3-Year Journey**
+            👉 [View Full PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
+
+            #### 📌 **Embedded Preview**
+            """, unsafe_allow_html=True)
+
+            pdf_url = "https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf"
+            st.components.v1.iframe(pdf_url, height=600, scrolling=True)
 
             # ✅ EWB Bar Charts
             df_ewb_agg = df_ewb.groupby(["year", "type_of_supply"]).agg(
@@ -136,12 +143,6 @@ if uploaded_file is not None:
             fig5 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
                           title="Number of EWB YoY (Split by Supply Type)")
             st.plotly_chart(fig5)
-
-            # ✅ Chart 3: Top 5 States by Assessable Value
-            df_states = df_ewb[df_ewb["State"].isin(["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"])]
-            fig6 = px.bar(df_states, x="State", y="assessable_value", color="year",
-                          title="Assessable Value in Top 5 States (YoY)")
-            st.plotly_chart(fig6)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
