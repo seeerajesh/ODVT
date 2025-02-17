@@ -18,7 +18,7 @@ def load_data(file):
     df_ewb["year"] = df_ewb["year"].astype(int)
 
     # Remove #N/A values for numeric calculations
-    df_pricing = df_pricing.replace("#N/A", pd.NA).dropna(subset=["Toll Cost", "ETA", "Lead Distance", "Shipper"])
+    df_pricing = df_pricing.replace("#N/A", pd.NA).dropna(subset=["Toll Cost", "ETA", "Lead Distance", "Shipper", "Rating"])
     
     return df_pricing, df_ewb
 
@@ -32,23 +32,49 @@ if uploaded_file is not None:
         # ✅ Streamlit Navigation Tabs
         tab1, tab2, tab3 = st.tabs(["📦 Overview Dashboard", "🚛 Transporter Discovery", "📜 EWB Dashboard"])
 
+        # ✅ Sidebar Common Filters (Applies to Both Overview & Transporter Discovery)
+        st.sidebar.header("🔍 Common Filters")
+
+        origin_filter = st.sidebar.multiselect("Select Origin Locality", df_pricing["Origin Locality"].unique(), 
+                                               default=[], key="origin_filter")
+        destination_filter = st.sidebar.multiselect("Select Destination Locality", df_pricing["Destination Locality"].unique(), 
+                                                    default=[], key="destination_filter")
+        transporter_filter = st.sidebar.multiselect("Select Transporter", df_pricing["Transporter"].unique(), 
+                                                    default=[], key="transporter_filter")
+        
+        rating_filter = st.sidebar.selectbox("Select Transporter Rating", 
+                                             ["<1", "1-3", "3-4", ">4"], key="rating_filter")
+
+        # ✅ Date Range Selection
+        date_options = {
+            "Month to Date": datetime.today().replace(day=1),
+            "3 Months": datetime.today() - timedelta(days=90),
+            "6 Months": datetime.today() - timedelta(days=180),
+            "1 Year": datetime.today() - timedelta(days=365),
+            "Full Range": None  # Custom date input
+        }
+        selected_date_range = st.sidebar.radio("Select Date Range", list(date_options.keys()), index=3)
+
+        if selected_date_range == "Full Range":
+            start_date, end_date = st.sidebar.date_input("Select Custom Date Range", 
+                                                         [df_pricing["created_at"].min().date(), df_pricing["created_at"].max().date()])
+            start_date = pd.to_datetime(start_date)
+            end_date = pd.to_datetime(end_date)
+        else:
+            start_date = date_options[selected_date_range]
+            end_date = datetime.today()
+
+        # ✅ Apply Common Filters
+        filtered_pricing = df_pricing[
+            (df_pricing["Origin Locality"].isin(origin_filter)) &
+            (df_pricing["Destination Locality"].isin(destination_filter)) &
+            (df_pricing["Transporter"].isin(transporter_filter)) &
+            (df_pricing["created_at"].between(start_date, end_date))
+        ]
+
         ### **🔹 TAB 1: Overview Dashboard**
         with tab1:
             st.header("📦 Overview Dashboard")
-
-            # ✅ Sidebar Filters with Unique Keys
-            st.sidebar.header("🔍 Filter Data")
-
-            origin_filter = st.sidebar.multiselect("Select Origin Locality", df_pricing["Origin Locality"].unique(), 
-                                                   default=[], key="origin_filter_overview")
-            destination_filter = st.sidebar.multiselect("Select Destination Locality", df_pricing["Destination Locality"].unique(), 
-                                                        default=[], key="destination_filter_overview")
-
-            # ✅ Apply Filters
-            filtered_pricing = df_pricing[
-                (df_pricing["Origin Locality"].isin(origin_filter)) &
-                (df_pricing["Destination Locality"].isin(destination_filter))
-            ]
 
             ### **🔹 Origin → Destination Table**
             st.subheader("📌 Origin to Destination Rate Summary")
@@ -71,7 +97,7 @@ if uploaded_file is not None:
                 avg_shipper_rate=("Shipper", "mean")
             ).reset_index()
 
-            state_agg["avg_shipper_rate"] = state_agg["avg_shipper_rate"].round(2)  # ✅ Round to 2 decimal places
+            state_agg["avg_shipper_rate"] = state_agg["avg_shipper_rate"].round(2)
 
             fig1 = px.scatter(state_agg, 
                               x="Origin State", y="Destination State",
@@ -86,25 +112,9 @@ if uploaded_file is not None:
         with tab2:
             st.header("🚛 Transporter Discovery Dashboard")
 
-            # ✅ Sidebar Filters with Unique Keys
-            transporter_filter = st.sidebar.multiselect("Select Transporter", df_pricing["Transporter"].unique(), 
-                                                        default=[], key="transporter_filter_discovery")
-            rating_filter = st.sidebar.selectbox("Select Transporter Rating", ["<1", "1-3", "3-4", ">4"], key="rating_filter_discovery")
-            origin_filter_discovery = st.sidebar.multiselect("Select Origin Locality", df_pricing["Origin Locality"].unique(), 
-                                                              default=[], key="origin_filter_discovery")
-            destination_filter_discovery = st.sidebar.multiselect("Select Destination Locality", df_pricing["Destination Locality"].unique(), 
-                                                                   default=[], key="destination_filter_discovery")
-
-            # ✅ Apply Filters
-            filtered_transporters = df_pricing[
-                (df_pricing["Transporter"].isin(transporter_filter)) &
-                (df_pricing["Origin Locality"].isin(origin_filter_discovery)) &
-                (df_pricing["Destination Locality"].isin(destination_filter_discovery))
-            ]
-
             ### **🔹 Transporter Performance Table**
             st.subheader("📌 Transporter Performance Summary")
-            transporter_table = filtered_transporters.groupby(["Transporter"]).agg(
+            transporter_table = filtered_pricing.groupby(["Transporter"]).agg(
                 Transporter_Rating=("Rating", "mean"),
                 Total_Vehicles=("Shipper", "count"),
                 Avg_ETA=("ETA", "mean"),
@@ -114,7 +124,7 @@ if uploaded_file is not None:
 
             ### **🔹 Transporter Bubble Chart**
             st.subheader("📌 Transporter Performance by Origin-Destination")
-            fig2 = px.scatter(filtered_transporters, 
+            fig2 = px.scatter(filtered_pricing, 
                               x="Origin State", y="Destination State",
                               size="Shipper", color="Transporter",
                               title="Transporter Activity by Origin-Destination",
