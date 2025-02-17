@@ -98,33 +98,42 @@ if uploaded_file is not None:
                               title=f"Total Vehicles Plying: {vehicle_count}")
                 col2.plotly_chart(fig2)
 
+            ### **🔹 New Cards for Toll Cost & ETA**
+            avg_toll = filtered_pricing["Toll Cost"].mean()
+            avg_eta = filtered_pricing["ETA"].mean()
+            col1.metric("🚦 Average Toll Cost", f"₹{avg_toll:,.2f}")
+            col2.metric("⏳ Average ETA", f"{avg_eta:.1f} hours")
+
+            ### **🔹 Bubble Chart: Top 5 Origin & Destination States**
+            top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
+            state_agg = filtered_pricing[
+                (filtered_pricing["Origin State"].isin(top_states)) & 
+                (filtered_pricing["Destination State"].isin(top_states))
+            ].groupby(["Origin State", "Destination State"]).agg(
+                num_trips=("Shipper", "count"),
+                avg_shipper_rate=("Shipper", "mean")
+            ).reset_index()
+
+            fig3 = px.scatter(state_agg, 
+                              x="Origin State", y="Destination State",
+                              size="avg_shipper_rate", color="avg_shipper_rate",
+                              title="Top 5 Origin-Destination Pairs by Shipper Rate",
+                              hover_name="Origin State", size_max=30,
+                              text="avg_shipper_rate")  # ✅ Display values inside bubbles
+            fig3.update_traces(textposition="top center")
+            st.plotly_chart(fig3)
+
         ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
             st.header("📜 E-Way Bill Analysis for 2024")
 
-            # ✅ Fixed PDF Embedding → Clickable Redirect Link
+            # ✅ Clickable External PDF Link
             st.markdown("""
             ### 📄 **E-Way Bill 3-Year Journey**
             👉 [Click here to view PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
             """)
 
-            # ✅ EWB Bar Charts
-            df_ewb_agg = df_ewb.groupby(["year", "type_of_supply"]).agg(
-                total_value=("assessable_value", "sum"),
-                total_ewaybills=("number_of_eway_bills", "sum")
-            ).reset_index()
-
-            # ✅ Chart 1: Yearly Assessable Value
-            fig4 = px.bar(df_ewb_agg, x="year", y="total_value", color="type_of_supply",
-                          title="Assessable Value YoY (Split by Supply Type)")
-            st.plotly_chart(fig4)
-
-            # ✅ Chart 2: Yearly Number of EWB
-            fig5 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
-                          title="Number of EWB YoY (Split by Supply Type)")
-            st.plotly_chart(fig5)
-
-            # ✅ Chart 3: Missing Chart for Top 5 States (YoY Assessable Value)
+            # ✅ Top 5 States - Assessable Value Chart
             top_5_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
             df_states = df_ewb[df_ewb["state"].isin(top_5_states)]  # ✅ Changed to "state"
             fig6 = px.bar(df_states, x="state", y="assessable_value", color="year",
