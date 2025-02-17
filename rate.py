@@ -4,8 +4,8 @@ import plotly.express as px
 from datetime import datetime, timedelta
 
 # ✅ Set Streamlit Page Title
-st.set_page_config(page_title="Logistics & EWB Dashboard", layout="wide")
-st.title("📊 Logistics & EWB Dashboard")
+st.set_page_config(page_title="Pre-Bidding Intelligence Dashboard", layout="wide")
+st.title("📊 Pre-Bidding Intelligence Dashboard")
 
 # ✅ Cache data loading to improve performance
 @st.cache_data
@@ -30,11 +30,11 @@ if uploaded_file is not None:
         df_pricing, df_ewb = load_data(uploaded_file)
 
         # ✅ Streamlit Navigation Tabs
-        tab1, tab2 = st.tabs(["📦 Logistics Pricing Dashboard", "📜 E-Way Bill Dashboard"])
+        tab1, tab2, tab3 = st.tabs(["📦 Overview Dashboard", "🚛 Transporter Discovery", "📜 EWB Dashboard"])
 
-        ### **🔹 TAB 1: Logistics Pricing Dashboard**
+        ### **🔹 TAB 1: Overview Dashboard**
         with tab1:
-            st.header("📦 Logistics Pricing Dashboard")
+            st.header("📦 Overview Dashboard")
 
             # ✅ Sidebar Filters
             st.sidebar.header("🔍 Filter Data")
@@ -43,70 +43,29 @@ if uploaded_file is not None:
                 """Creates a multi-select filter with a 'Select All' option"""
                 options = ["Select All"] + list(column_values)
                 selected_values = st.sidebar.multiselect(label, options, default=["Select All"])
-
                 return list(column_values) if "Select All" in selected_values else selected_values
 
             # ✅ Filters
             origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
             destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
-            transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique())
-
-            # ✅ Date Range Predefined Filters + Full Date Selection
-            date_options = {
-                "Month to Date": datetime.today().replace(day=1),
-                "1 Month": datetime.today() - timedelta(days=30),
-                "3 Months": datetime.today() - timedelta(days=90),
-                "6 Months": datetime.today() - timedelta(days=180),
-                "1 Year": datetime.today() - timedelta(days=365),
-                "Full Date Range": None  # Custom date input
-            }
-            selected_date_range = st.sidebar.radio("Select Date Range", list(date_options.keys()), index=4)
-
-            if selected_date_range == "Full Date Range":
-                start_date, end_date = st.sidebar.date_input("Select Custom Date Range", 
-                                                             [df_pricing["created_at"].min().date(), df_pricing["created_at"].max().date()])
-                start_date = pd.to_datetime(start_date)
-                end_date = pd.to_datetime(end_date)
-            else:
-                start_date = date_options[selected_date_range]
-                end_date = datetime.today()
 
             # ✅ Apply Filters
             filtered_pricing = df_pricing[
                 (df_pricing["Origin Locality"].isin(origin_filter)) &
-                (df_pricing["Destination Locality"].isin(destination_filter)) &
-                (df_pricing["Transporter"].isin(transporter_filter)) &
-                (df_pricing["created_at"].between(start_date, end_date))
+                (df_pricing["Destination Locality"].isin(destination_filter))
             ]
 
-            ### **🔹 Top Panel - Circle Charts**
-            col1, col2 = st.columns(2)
-
-            if not filtered_pricing.empty:
-                # ✅ Shipper Rate Breakdown
-                shipper_rate_total = filtered_pricing["Shipper"].sum()
-                rate_type_data = filtered_pricing.groupby("Rate type")["Shipper"].sum().reset_index()
-                fig1 = px.pie(rate_type_data, values="Shipper", names="Rate type", hole=0.4,
-                              title=f"Shipper Rate Breakdown (Total: ₹{shipper_rate_total:,.2f})")
-                col1.plotly_chart(fig1)
-
-                # ✅ Vehicle Count Breakdown
-                vehicle_count = len(filtered_pricing)
-                category_data = filtered_pricing["Category"].value_counts().reset_index()
-                category_data.columns = ["Category", "Vehicle Count"]
-                fig2 = px.pie(category_data, values="Vehicle Count", names="Category", hole=0.4,
-                              title=f"Total Vehicles Plying: {vehicle_count}")
-                col2.plotly_chart(fig2)
-
-            ### **🔹 Toll Cost & ETA Table**
-            st.subheader("📌 Average Toll Cost & ETA per Route")
-            avg_toll_eta_table = filtered_pricing.groupby(["Origin State", "Destination State"]).agg(
+            ### **🔹 Origin → Destination Table**
+            st.subheader("📌 Origin to Destination Rate Summary")
+            od_table = filtered_pricing.groupby(["Origin Locality", "Destination Locality"]).agg(
+                Avg_Shipper_Rate=("Shipper", "mean"),
+                Avg_ETA=("ETA", "mean"),
                 Avg_Toll_Cost=("Toll Cost", "mean"),
-                Avg_ETA=("ETA", "mean")
+                Avg_Lead_Distance=("Lead Distance", "mean")
             ).reset_index()
-            st.dataframe(avg_toll_eta_table)
+            st.dataframe(od_table)
 
-            ### **🔹 Bubble Chart: Top 5 Origin & Destination States**
+            ### **🔹 Bubble Chart: Top 5 Origin-Destination States (Rounded to 2 Decimals)**
             top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
             state_agg = filtered_pricing[
                 (filtered_pricing["Origin State"].isin(top_states)) & 
@@ -116,17 +75,57 @@ if uploaded_file is not None:
                 avg_shipper_rate=("Shipper", "mean")
             ).reset_index()
 
-            fig3 = px.scatter(state_agg, 
+            state_agg["avg_shipper_rate"] = state_agg["avg_shipper_rate"].round(2)  # ✅ Round to 2 decimal places
+
+            fig1 = px.scatter(state_agg, 
                               x="Origin State", y="Destination State",
                               size="avg_shipper_rate", color="avg_shipper_rate",
                               title="Top 5 Origin-Destination Pairs by Shipper Rate",
                               hover_name="Origin State", size_max=30,
                               text="avg_shipper_rate")  
-            fig3.update_traces(textposition="top center")
-            st.plotly_chart(fig3)
+            fig1.update_traces(textposition="top center")
+            st.plotly_chart(fig1)
 
-        ### **🔹 TAB 2: EWB Dashboard**
+        ### **🔹 TAB 2: Transporter Discovery Dashboard**
         with tab2:
+            st.header("🚛 Transporter Discovery Dashboard")
+
+            # ✅ Sidebar Filters
+            transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique())
+            rating_filter = st.sidebar.selectbox("Select Transporter Rating", ["<1", "1-3", "3-4", ">4"])
+            origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
+            destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
+
+            # ✅ Apply Filters
+            filtered_transporters = df_pricing[
+                (df_pricing["Transporter"].isin(transporter_filter)) &
+                (df_pricing["Origin Locality"].isin(origin_filter)) &
+                (df_pricing["Destination Locality"].isin(destination_filter))
+            ]
+
+            ### **🔹 Transporter Performance Table**
+            st.subheader("📌 Transporter Performance Summary")
+            transporter_table = filtered_transporters.groupby(["Transporter"]).agg(
+                Transporter_Rating=("Rating", "mean"),
+                Total_Vehicles=("Shipper", "count"),
+                Avg_ETA=("ETA", "mean"),
+                Avg_Shipper_Rate=("Shipper", "mean")
+            ).reset_index()
+            st.dataframe(transporter_table)
+
+            ### **🔹 Transporter Bubble Chart**
+            st.subheader("📌 Transporter Performance by Origin-Destination")
+            fig2 = px.scatter(filtered_transporters, 
+                              x="Origin State", y="Destination State",
+                              size="Shipper", color="Transporter",
+                              title="Transporter Activity by Origin-Destination",
+                              hover_name="Transporter", size_max=30,
+                              text="Shipper")  
+            fig2.update_traces(textposition="top center")
+            st.plotly_chart(fig2)
+
+        ### **🔹 TAB 3: EWB Dashboard**
+        with tab3:
             st.header("📜 E-Way Bill Analysis for 2024")
 
             # ✅ Clickable External PDF Link
@@ -142,14 +141,14 @@ if uploaded_file is not None:
             ).reset_index()
 
             # ✅ Chart 1: Yearly Assessable Value
-            fig4 = px.bar(df_ewb_agg, x="year", y="total_value", color="type_of_supply",
+            fig3 = px.bar(df_ewb_agg, x="year", y="total_value", color="type_of_supply",
                           title="Assessable Value YoY (Split by Supply Type)")
-            st.plotly_chart(fig4)
+            st.plotly_chart(fig3)
 
             # ✅ Chart 2: Yearly Number of EWB
-            fig5 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
+            fig4 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
                           title="Number of EWB YoY (Split by Supply Type)")
-            st.plotly_chart(fig5)
+            st.plotly_chart(fig4)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
