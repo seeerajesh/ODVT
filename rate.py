@@ -49,23 +49,33 @@ if uploaded_file is not None:
             # ✅ Filters
             origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
             destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
+            transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique())
 
-            # ✅ Date Range Predefined Filters
+            # ✅ Date Range Predefined Filters + Full Date Selection
             date_options = {
                 "Month to Date": datetime.today().replace(day=1),
                 "1 Month": datetime.today() - timedelta(days=30),
                 "3 Months": datetime.today() - timedelta(days=90),
                 "6 Months": datetime.today() - timedelta(days=180),
-                "1 Year": datetime.today() - timedelta(days=365)
+                "1 Year": datetime.today() - timedelta(days=365),
+                "Full Date Range": None  # Custom date input
             }
             selected_date_range = st.sidebar.radio("Select Date Range", list(date_options.keys()), index=4)
-            start_date = date_options[selected_date_range]
-            end_date = datetime.today()
+
+            if selected_date_range == "Full Date Range":
+                start_date, end_date = st.sidebar.date_input("Select Custom Date Range", 
+                                                             [df_pricing["created_at"].min().date(), df_pricing["created_at"].max().date()])
+                start_date = pd.to_datetime(start_date)
+                end_date = pd.to_datetime(end_date)
+            else:
+                start_date = date_options[selected_date_range]
+                end_date = datetime.today()
 
             # ✅ Apply Filters
             filtered_pricing = df_pricing[
                 (df_pricing["Origin Locality"].isin(origin_filter)) &
                 (df_pricing["Destination Locality"].isin(destination_filter)) &
+                (df_pricing["Transporter"].isin(transporter_filter)) &
                 (df_pricing["created_at"].between(start_date, end_date))
             ]
 
@@ -88,44 +98,19 @@ if uploaded_file is not None:
                               title=f"Total Vehicles Plying: {vehicle_count}")
                 col2.plotly_chart(fig2)
 
-            ### **🔹 New Cards for Toll Cost & ETA**
-            avg_toll = filtered_pricing["Toll Cost"].mean()
-            avg_eta = filtered_pricing["ETA"].mean()
-            col1.metric("🚦 Average Toll Cost", f"₹{avg_toll:,.2f}")
-            col2.metric("⏳ Average ETA", f"{avg_eta:.1f} hours")
-
-            ### **🔹 Bubble Chart: Top 5 Origin & Destination States**
-            top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
-            state_agg = filtered_pricing[
-                (filtered_pricing["Origin State"].isin(top_states)) & 
-                (filtered_pricing["Destination State"].isin(top_states))
-            ].groupby(["Origin State", "Destination State"]).agg(
-                num_trips=("Shipper", "count"),
-                avg_shipper_rate=("Shipper", "mean")
-            ).reset_index()
-
-            fig3 = px.scatter(state_agg, 
-                              x="Origin State", y="Destination State",
-                              size="avg_shipper_rate", color="avg_shipper_rate",
-                              title="Top 5 Origin-Destination Pairs by Shipper Rate",
-                              hover_name="Origin State", size_max=30,
-                              text="avg_shipper_rate")  # ✅ Display values inside bubbles
-            fig3.update_traces(textposition="top center")
-            st.plotly_chart(fig3)
-
-        ### **🔹 TAB 2: EWB Dashboard**
+            ### **🔹 TAB 2: EWB Dashboard**
         with tab2:
             st.header("📜 E-Way Bill Analysis for 2024")
 
-            # ✅ Embed EWB PDF
+            # ✅ Fixed PDF Embedding (No Chrome Block Issue)
             st.markdown("""
             ### 📄 **E-Way Bill 3-Year Journey**
-            👉 [View Full PDF](https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf)
+            👉 [View Full PDF](https://drive.google.com/file/d/1N2NHRznQXvQFXojk3EY2Ml6NsdLbmDBR/view)
 
             #### 📌 **Embedded Preview**
             """, unsafe_allow_html=True)
 
-            pdf_url = "https://docs.ewaybillgst.gov.in/Documents/ewaybill3yearJourney.pdf"
+            pdf_url = "https://drive.google.com/file/d/1N2NHRznQXvQFXojk3EY2Ml6NsdLbmDBR/preview"
             st.components.v1.iframe(pdf_url, height=600, scrolling=True)
 
             # ✅ EWB Bar Charts
@@ -143,6 +128,13 @@ if uploaded_file is not None:
             fig5 = px.bar(df_ewb_agg, x="year", y="total_ewaybills", color="type_of_supply",
                           title="Number of EWB YoY (Split by Supply Type)")
             st.plotly_chart(fig5)
+
+            # ✅ Chart 3: Missing Chart for Top 5 States (YoY Assessable Value)
+            top_5_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
+            df_states = df_ewb[df_ewb["State"].isin(top_5_states)]
+            fig6 = px.bar(df_states, x="State", y="assessable_value", color="year",
+                          title="Assessable Value in Top 5 States (YoY)")
+            st.plotly_chart(fig6)
 
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
