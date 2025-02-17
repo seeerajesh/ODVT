@@ -36,18 +36,13 @@ if uploaded_file is not None:
         with tab1:
             st.header("📦 Overview Dashboard")
 
-            # ✅ Sidebar Filters
+            # ✅ Sidebar Filters with Unique Keys
             st.sidebar.header("🔍 Filter Data")
 
-            def multi_select_with_select_all(label, column_values):
-                """Creates a multi-select filter with a 'Select All' option"""
-                options = ["Select All"] + list(column_values)
-                selected_values = st.sidebar.multiselect(label, options, default=["Select All"])
-                return list(column_values) if "Select All" in selected_values else selected_values
-
-            # ✅ Filters
-            origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
-            destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
+            origin_filter = st.sidebar.multiselect("Select Origin Locality", df_pricing["Origin Locality"].unique(), 
+                                                   default=[], key="origin_filter_overview")
+            destination_filter = st.sidebar.multiselect("Select Destination Locality", df_pricing["Destination Locality"].unique(), 
+                                                        default=[], key="destination_filter_overview")
 
             # ✅ Apply Filters
             filtered_pricing = df_pricing[
@@ -65,7 +60,8 @@ if uploaded_file is not None:
             ).reset_index()
             st.dataframe(od_table)
 
-            ### **🔹 Bubble Chart: Top 5 Origin-Destination States (Rounded to 2 Decimals)**
+            ### **🔹 Bubble Chart: Top 5 Origin-Destination States**
+            st.subheader("📌 Shipper Rate by Origin-Destination (Rounded to 2 Decimals)")
             top_states = ["Maharashtra", "Gujarat", "Tamil Nadu", "Karnataka", "Uttar Pradesh"]
             state_agg = filtered_pricing[
                 (filtered_pricing["Origin State"].isin(top_states)) & 
@@ -90,17 +86,20 @@ if uploaded_file is not None:
         with tab2:
             st.header("🚛 Transporter Discovery Dashboard")
 
-            # ✅ Sidebar Filters
-            transporter_filter = multi_select_with_select_all("Select Transporter", df_pricing["Transporter"].unique())
-            rating_filter = st.sidebar.selectbox("Select Transporter Rating", ["<1", "1-3", "3-4", ">4"])
-            origin_filter = multi_select_with_select_all("Select Origin Locality", df_pricing["Origin Locality"].unique())
-            destination_filter = multi_select_with_select_all("Select Destination Locality", df_pricing["Destination Locality"].unique())
+            # ✅ Sidebar Filters with Unique Keys
+            transporter_filter = st.sidebar.multiselect("Select Transporter", df_pricing["Transporter"].unique(), 
+                                                        default=[], key="transporter_filter_discovery")
+            rating_filter = st.sidebar.selectbox("Select Transporter Rating", ["<1", "1-3", "3-4", ">4"], key="rating_filter_discovery")
+            origin_filter_discovery = st.sidebar.multiselect("Select Origin Locality", df_pricing["Origin Locality"].unique(), 
+                                                              default=[], key="origin_filter_discovery")
+            destination_filter_discovery = st.sidebar.multiselect("Select Destination Locality", df_pricing["Destination Locality"].unique(), 
+                                                                   default=[], key="destination_filter_discovery")
 
             # ✅ Apply Filters
             filtered_transporters = df_pricing[
                 (df_pricing["Transporter"].isin(transporter_filter)) &
-                (df_pricing["Origin Locality"].isin(origin_filter)) &
-                (df_pricing["Destination Locality"].isin(destination_filter))
+                (df_pricing["Origin Locality"].isin(origin_filter_discovery)) &
+                (df_pricing["Destination Locality"].isin(destination_filter_discovery))
             ]
 
             ### **🔹 Transporter Performance Table**
