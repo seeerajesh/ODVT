@@ -8,8 +8,8 @@ from PIL import Image
 st.set_page_config(page_title="Pre-Bidding Intelligence Dashboard", layout="wide")
 
 # ✅ Load and Display Company Logo (Top Left) & Login Info (Top Right)
-logo_path = "/Users/admin/Desktop/Image 1.png"
-login_path = "/Users/admin/Desktop/Image 2.png"
+logo_path = "logo.png"  # Company Logo
+login_path = "login.png"  # Login Logo
 
 def load_image(image_path):
     try:
@@ -17,16 +17,15 @@ def load_image(image_path):
     except Exception:
         return None
 
-logo = load_image(logo_path)
-login = load_image(login_path)
-
-col1, col2 = st.columns([0.2, 0.8])
+col1, col2, col3 = st.columns([0.2, 0.6, 0.2])
 with col1:
+    logo = load_image(logo_path)
     if logo:
         st.image(logo, width=150)
     else:
         st.warning("Company logo not found.")
-with col2:
+with col3:
+    login = load_image(login_path)
     if login:
         st.image(login, width=150)
     else:
@@ -38,8 +37,8 @@ menu_option = st.sidebar.radio("Select Page:", ["Control Tower", "Add Trip", "Pr
 
 # ✅ Handle Menu Selection
 image_paths = {
-    "Control Tower": "/Users/admin/Desktop/Image 4.png",
-    "Add Trip": "/Users/admin/Desktop/Image 3.png"
+    "Control Tower": "control_tower.png",
+    "Add Trip": "add_trip.png"
 }
 
 if menu_option in image_paths:
@@ -91,7 +90,7 @@ else:
             selected_ratings = st.multiselect("Select Transporter Rating", ["Select All", "<2", "2-3", "3-4", ">4"], default=["Select All"], key="rating_filter")
             if "Select All" in selected_ratings:
                 selected_ratings = list(rating_ranges.keys())
-            rating_filter_values = pd.concat([rating_ranges[r] for r in selected_ratings])
+            rating_filter_values = pd.concat([rating_ranges[r] for r in selected_ratings]).tolist()
             
             date_options = {
                 "Month to Date": datetime.today().replace(day=1),
