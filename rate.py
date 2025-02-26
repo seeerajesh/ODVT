@@ -8,29 +8,46 @@ from PIL import Image
 st.set_page_config(page_title="Pre-Bidding Intelligence Dashboard", layout="wide")
 
 # ✅ Load and Display Company Logo (Top Left) & Login Info (Top Right)
-logo_path = "/mnt/data/Image 1.png"
-login_path = "/mnt/data/Image 2.png"
+logo_path = "/Users/admin/Desktop/Image 1.png"
+login_path = "/Users/admin/Desktop/Image 2.png"
 
-try:
-    logo = Image.open(logo_path)
-    login = Image.open(login_path)
-    col1, col2 = st.columns([0.2, 0.8])
-    with col1:
+def load_image(image_path):
+    try:
+        return Image.open(image_path)
+    except Exception:
+        return None
+
+logo = load_image(logo_path)
+login = load_image(login_path)
+
+col1, col2 = st.columns([0.2, 0.8])
+with col1:
+    if logo:
         st.image(logo, width=150)
-    with col2:
+    else:
+        st.warning("Company logo not found.")
+with col2:
+    if login:
         st.image(login, width=150)
-except Exception as e:
-    st.error(f"Error loading images: {e}")
+    else:
+        st.warning("Login image not found.")
 
 # ✅ Sidebar Navigation Menu
 st.sidebar.header("📌 Navigation")
 menu_option = st.sidebar.radio("Select Page:", ["Control Tower", "Add Trip", "Pre-Bid Intelligence"])
 
 # ✅ Handle Menu Selection
-if menu_option == "Control Tower":
-    st.image("/mnt/data/Image 4.png", use_column_width=True)
-elif menu_option == "Add Trip":
-    st.image("/mnt/data/Image 3.png", use_column_width=True)
+image_paths = {
+    "Control Tower": "/Users/admin/Desktop/Image 4.png",
+    "Add Trip": "/Users/admin/Desktop/Image 3.png"
+}
+
+if menu_option in image_paths:
+    image = load_image(image_paths[menu_option])
+    if image:
+        st.image(image, use_container_width=True)
+    else:
+        st.warning(f"Image for {menu_option} not found.")
 else:
     st.title("📊 Pre-Bidding Intelligence Dashboard")
     
@@ -99,23 +116,6 @@ else:
                 (df_pricing["Rating"].isin(rating_filter_values)) &
                 (df_pricing["created_at"].between(start_date, end_date))
             ]
-            
-            with tab1:
-                st.header("📦 Overview Dashboard")
-                st.subheader("🔍 Key Filters Applied")
-                st.write(f"**Origin(s):** {', '.join(origin_filter)}")
-                st.write(f"**Destination(s):** {', '.join(destination_filter)}")
-                st.write(f"**Transporter(s):** {', '.join(transporter_filter)}")
-                st.write(f"**Date Range:** {start_date.date()} to {end_date.date()}")
-                total_shippers = filtered_pricing["Shipper"].nunique()
-                total_trips = len(filtered_pricing)
-                avg_toll_cost = filtered_pricing["Toll Cost"].mean()
-                avg_eta = filtered_pricing["ETA"].mean()
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("Total Shippers", total_shippers)
-                col2.metric("Total Trips", total_trips)
-                col3.metric("Avg Toll Cost", round(avg_toll_cost, 2))
-                col4.metric("Avg ETA (hours)", round(avg_eta, 2))
         except Exception as e:
             st.error(f"❌ Error loading file: {e}")
     else:
