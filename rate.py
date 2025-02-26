@@ -8,8 +8,8 @@ from PIL import Image
 st.set_page_config(page_title="Pre-Bidding Intelligence Dashboard", layout="wide")
 
 # ✅ Load and Display Company Logo (Top Left) & Login Info (Top Right)
-logo_path = "logo.png"  # Company Logo
-login_path = "login.png"  # Login Logo
+logo_path = "Image_1.png"  # Company Logo
+login_path = "Image_2.png"  # Login Logo
 
 def load_image(image_path):
     try:
@@ -37,8 +37,8 @@ menu_option = st.sidebar.radio("Select Page:", ["Control Tower", "Add Trip", "Pr
 
 # ✅ Handle Menu Selection
 image_paths = {
-    "Control Tower": "control_tower.png",
-    "Add Trip": "add_trip.png"
+    "Control Tower": "Image_4.png",
+    "Add Trip": "Image_3.png"
 }
 
 if menu_option in image_paths:
