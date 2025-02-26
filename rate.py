@@ -7,9 +7,13 @@ from PIL import Image
 # ✅ Set Streamlit Page Title and Layout
 st.set_page_config(page_title="Pre-Bidding Intelligence Dashboard", layout="wide")
 
-# ✅ Load and Display Company Logo (Top Left) & Login Info (Top Right)
-logo_path = "logo.png"  # Company Logo
-login_path = "login.png"  # Login Logo
+# ✅ Load and Display Static Images
+image_paths = {
+    "company_logo": "Image_1.png",
+    "login_user": "Image_2.png",
+    "control_tower": "Image_4.png",
+    "add_trip": "Image_3.png"
+}
 
 def load_image(image_path):
     try:
@@ -19,11 +23,11 @@ def load_image(image_path):
 
 col1, col2, col3 = st.columns([0.2, 0.6, 0.2])
 with col1:
-    logo = load_image(logo_path)
+    logo = load_image(image_paths["company_logo"])
     if logo:
         st.image(logo, width=150)
 with col3:
-    login = load_image(login_path)
+    login = load_image(image_paths["login_user"])
     if login:
         st.image(login, width=150)
 
@@ -64,28 +68,50 @@ if uploaded_file is not None:
                                       (df_pricing["destination locality"].isin(destination_filter)) &
                                       (df_pricing["created_at"].between(pd.to_datetime(date_range[0]), pd.to_datetime(date_range[1])))]
         
-        if menu_option == "Pre-Bid Intelligence":
+        if menu_option == "Control Tower":
+            st.image(image_paths["control_tower"], use_column_width=True)
+        
+        elif menu_option == "Add Trip":
+            st.image(image_paths["add_trip"], use_column_width=True)
+        
+        elif menu_option == "Pre-Bid Intelligence":
             st.subheader("📊 Pre-Bid Intelligence Dashboard")
             
-            col1, col2 = st.columns(2)
+            tab1, tab2, tab3 = st.tabs(["Overview Dashboard", "Transporter Discovery Dashboard", "EWB Dashboard"])
             
-            with col1:
-                shipper_chart = px.pie(filtered_pricing, values="shipper", names="rate type", title="Total Shipper Rate by Rate Type", hole=0.4)
-                st.plotly_chart(shipper_chart, use_container_width=True)
+            with tab1:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    shipper_chart = px.pie(filtered_pricing, values="shipper", names="category", title="Total Shipper Rate by Category", hole=0.4)
+                    st.plotly_chart(shipper_chart, use_container_width=True)
+                
+                with col2:
+                    vehicle_chart = px.pie(filtered_pricing, names="category", title="Total Vehicle Count by Category", hole=0.4)
+                    st.plotly_chart(vehicle_chart, use_container_width=True)
+                
+                avg_table = filtered_pricing.groupby(["origin locality", "destination locality"]).agg({"shipper": "mean", "eta": "mean", "toll cost": "mean", "lead distance": "mean"}).reset_index()
+                avg_table = avg_table.round(2)
+                st.dataframe(avg_table)
             
-            with col2:
-                vehicle_chart = px.pie(filtered_pricing, names="category", title="Total Vehicle Count by Category", hole=0.4)
-                st.plotly_chart(vehicle_chart, use_container_width=True)
+            with tab2:
+                st.subheader("🚛 Transporter Discovery Dashboard")
+                
+                transporter_table = filtered_pricing.groupby("transporter").agg({
+                    "rating": "mean", 
+                    "shipper": "mean", 
+                    "eta": "mean", 
+                    "lead distance": "count"
+                }).rename(columns={"shipper": "avg shipper rate", "lead distance": "total vehicles"}).reset_index()
+                st.dataframe(transporter_table)
+                
+                bubble_chart = px.scatter(filtered_pricing, x="origin state", y="destination state", size="lead distance", color="transporter", title="Transporter Movement", hover_name="transporter")
+                st.plotly_chart(bubble_chart, use_container_width=True)
             
-            avg_table = filtered_pricing.groupby(["origin locality", "destination locality"]).agg({"shipper": "mean", "eta": "mean", "toll cost": "mean", "lead distance": "mean"}).reset_index()
-            avg_table = avg_table.round(2)
-            st.dataframe(avg_table)
-            
-            top_states = ["maharastra", "gujarat", "tamil nadu", "karnataka", "uttar pradesh"]
-            df_bubble = filtered_pricing[filtered_pricing["origin state"].isin(top_states) & filtered_pricing["destination state"].isin(top_states)]
-            bubble_chart = px.scatter(df_bubble, x="origin state", y="destination state", size="shipper", color="origin state", title="Bubble Chart: Origin vs Destination State")
-            st.plotly_chart(bubble_chart, use_container_width=True)
-        
+            with tab3:
+                st.subheader("📄 EWB Dashboard")
+                st.write("Coming Soon!")
+    
     except Exception as e:
         st.error(f"❌ Error loading file: {e}")
 else:
