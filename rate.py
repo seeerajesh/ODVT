@@ -2,16 +2,25 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime, timedelta
+from PIL import Image
 
 # ✅ Set Streamlit Page Title and Layout
 st.set_page_config(page_title="Pre-Bidding Intelligence Dashboard", layout="wide")
 
 # ✅ Load and Display Company Logo (Top Left) & Login Info (Top Right)
-col1, col2 = st.columns([0.2, 0.8])
-with col1:
-    st.image("/mnt/data/Image 1.png", width=150)
-with col2:
-    st.image("/mnt/data/Image 2.png", width=150)
+logo_path = "/mnt/data/Image 1.png"
+login_path = "/mnt/data/Image 2.png"
+
+try:
+    logo = Image.open(logo_path)
+    login = Image.open(login_path)
+    col1, col2 = st.columns([0.2, 0.8])
+    with col1:
+        st.image(logo, width=150)
+    with col2:
+        st.image(login, width=150)
+except Exception as e:
+    st.error(f"Error loading images: {e}")
 
 # ✅ Sidebar Navigation Menu
 st.sidebar.header("📌 Navigation")
